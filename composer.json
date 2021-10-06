@@ -1,0 +1,9 @@
+{
+    "name": "mac/mvc-framework",
+    "require": {},
+    "autoload": {
+        "psr-4": {
+            "app\\": "./"
+        }
+    }
+}
