@@ -18,12 +18,35 @@ class Database
 
     public function applyMigrations()
     {
-        $this->createMigrationsTable();
-        $this->getApplaiedMigrations();
 
+        $this->createMigrationsTable();
+        $apppliedMirations = $this->getApplaiedMigrations();
+
+        $newMigration = [];
         $files = scandir(Application::$ROOT_DIR, 'migrations');
 
-        HelperFunctions::dd($files);
+        //??
+        $toApplyMigrations = array_diff($files, $apppliedMirations);
+
+        foreach ($toApplyMigrations as $migration){
+            if ($migration === '.' || $migration === '..'){
+                continue;
+            }
+
+            require_once Application::$ROOT_DIR.'/migrations/'.$migration;
+            $className = pathinfo($migration, PATHINFO_FILENAME);
+            $instance = new Database();
+            $this->log("Applying migration $migration");
+            $instance->up();
+            $this->log("Applied migration $migration");
+            $newMigration[] = $migration;
+        }
+        if (!empty($newMigration)){
+            $this->saveMigration($newMigration);
+        } else {
+            $this->log("All migrations are applied");
+        }
+
     }
 
     public function createMigrationsTable()
@@ -39,9 +62,21 @@ class Database
 
     public function getApplaiedMigrations()
     {
-        $statment = $this->PDO->prepare("SELECT migration FROM migrations");
-        $statment->execute();
+        $statement = $this->PDO->prepare("SELECT migration FROM migrations");
+        $statement->execute();
 
-        return $statment->fetchAll(\PDO::FETCH_COLUMN);
+        return $statement->fetchAll(\PDO::FETCH_COLUMN);
+    }
+
+    public function saveMigration(array $migrations)
+    {
+       $str =implode(",",  array_map(fn($m) => "('$m')", $migrations));
+       $statement = $this->pdo->prepare("INSERT INTO migrations (migration) VALUES  $str");
+       $statement->execute();
+    }
+
+    protected function log($message)
+    {
+        echo '['.date('Y-md H:i:s').'] - '. $message.PHP_EOL;
     }
 }
